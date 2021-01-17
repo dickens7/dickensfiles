@@ -1,4 +1,4 @@
-FROM alpine:3.10
+FROM alpine:3.12
 
 # --build-arg timezone=Asia/Shanghai
 ARG timezone
@@ -106,7 +106,7 @@ RUN set -ex \
         && ( \
             cd swoole \
             && phpize \
-            && ./configure --enable-mysqlnd --enable-openssl --enable-http2 --enable-swoole-json --enable-swoole-curl \
+            && ./configure --enable-mysqlnd --enable-openssl --enable-http2 --enable-swoole-json \
             && make -j$(nproc) && make install \
         ) \
         && rm -r swoole \
@@ -114,6 +114,9 @@ RUN set -ex \
         # php extension: xlswriter
         && pecl install xlswriter \
         && echo "extension=xlswriter.so" > /etc/php7/conf.d/20_xlswriter.ini \
+        # php extension: mongodb
+        && pecl install mongodb \
+        && echo "extension=xlswriter.so" > /etc/php7/conf.d/20_mongodb.ini \
         # ---------- clear works ----------
         && php -v \
         && php -m \
