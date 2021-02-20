@@ -116,7 +116,7 @@ RUN set -ex \
         && echo "extension=xlswriter.so" > /etc/php7/conf.d/20_xlswriter.ini \
         # php extension: mongodb
         && pecl install mongodb \
-        && echo "extension=xlswriter.so" > /etc/php7/conf.d/20_mongodb.ini \
+        && echo "extension=mongodb.so" > /etc/php7/conf.d/20_mongodb.ini \
         # ---------- clear works ----------
         && php -v \
         && php -m \
