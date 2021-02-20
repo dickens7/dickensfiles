@@ -1,9 +1,13 @@
+ARG ENABLE_PROXY=true
+
 FROM openresty/openresty:alpine-fat AS production-stage
 
-ARG APISIX_VERSION=2.2
+ARG APISIX_VERSION=2.3
+LABEL apisix_version="${APISIX_VERSION}"
 
-RUN echo ${APISIX_VERSION} && set -x \
-    && /bin/sed -i 's,http://dl-cdn.alpinelinux.org,https://mirrors.aliyun.com,g' /etc/apk/repositories \
+ARG ENABLE_PROXY
+RUN set -x \
+    && (test "${ENABLE_PROXY}" != "true" || /bin/sed -i 's,http://dl-cdn.alpinelinux.org,https://mirrors.aliyun.com,g' /etc/apk/repositories) \
     && apk add --no-cache --virtual .builddeps \
     automake \
     autoconf \
@@ -11,19 +15,22 @@ RUN echo ${APISIX_VERSION} && set -x \
     pkgconfig \
     cmake \
     git \
+    && mkdir ~/.luarocks \
+    && luarocks config variables.OPENSSL_LIBDIR /usr/local/openresty/openssl/lib \
+    && luarocks config variables.OPENSSL_INCDIR /usr/local/openresty/openssl/include \
     && luarocks install https://github.com/apache/apisix/raw/master/rockspec/apisix-${APISIX_VERSION}-0.rockspec --tree=/usr/local/apisix/deps \
     && luarocks install snowflake --tree=/usr/local/apisix/deps \
     && cp -v /usr/local/apisix/deps/lib/luarocks/rocks-5.1/apisix/${APISIX_VERSION}-0/bin/apisix /usr/bin/ \
-    && bin='#! /usr/local/openresty/luajit/bin/luajit\npackage.path = "/usr/local/apisix/?.lua;" .. package.path' \
-    && sed -i "1s@.*@$bin@" /usr/bin/apisix \
+    && (if [ "$APISIX_VERSION" = "master" ] || [ "$APISIX_VERSION" \> "2.2" ]; then echo 'use shell ';else bin='#! /usr/local/openresty/luajit/bin/luajit\npackage.path = "/usr/local/apisix/?.lua;" .. package.path'; sed -i "1s@.*@$bin@" /usr/bin/apisix ; fi;) \
     && mv /usr/local/apisix/deps/share/lua/5.1/apisix /usr/local/apisix \
     && apk del .builddeps build-base make unzip
 
 FROM alpine:3.11 AS last-stage
 
+ARG ENABLE_PROXY
 # add runtime for Apache APISIX
 RUN set -x \
-    && /bin/sed -i 's,http://dl-cdn.alpinelinux.org,https://mirrors.aliyun.com,g' /etc/apk/repositories \
+    && (test "${ENABLE_PROXY}" != "true" || /bin/sed -i 's,http://dl-cdn.alpinelinux.org,https://mirrors.aliyun.com,g' /etc/apk/repositories) \
     && apk add --no-cache bash libstdc++ curl
 
 WORKDIR /usr/local/apisix
